@@ -1,0 +1,46 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_IMAGE = 'engrgyang/my-static-ecommerce-site'
+        DOCKER_HUB_CREDENTIALS = 'your-docker-hub-credentials-id'
+        GITHUB_CREDENTIALS = 'your-github-credentials-id'
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main',
+                    credentialsId: env.GITHUB_CREDENTIALS,
+                    url: '(link unavailable)'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t ${DOCKER_IMAGE} .'
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: env.DOCKER_HUB_CREDENTIALS,
+                        passwordVariable: 'DOCKER_PASSWORD',
+                        usernameVariable: 'DOCKER_USERNAME'
+                    )
+                ]) {
+                    sh 'docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}'
+                    sh 'docker push ${DOCKER_IMAGE}'
+                }
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                sh 'docker system prune -f'
+            }
+        }
+    }
+}
