@@ -8,39 +8,37 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Git Checkout') {
             steps {
-                git branch: 'main',
-                    credentialsId: env.GITHUB_CREDENTIALS,
-                    url: '(link unavailable)'
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                sh 'docker build -t ${DOCKER_IMAGE} .'
-            }
-        }
-
-        stage('Push to Docker Hub') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: env.DOCKER_HUB_CREDENTIALS,
-                        passwordVariable: 'DOCKER_PASSWORD',
-                        usernameVariable: 'DOCKER_USERNAME'
-                    )
-                ]) {
-                    sh 'docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}'
-                    sh 'docker push ${DOCKER_IMAGE}'
+                dir('devops-challenge') {
+                    git url: REPO_URL, branch: 'main'
                 }
             }
         }
 
-        stage('Cleanup') {
+        stage('Build and Push with Docker Compose') {
             steps {
-                sh 'docker system prune -f'
+                script {
+                    // Change to the directory with the docker-compose file
+                    dir('devops-challenge') {
+                        // Build and push the Docker image using docker-compose
+                        sh 'docker-compose build'
+                        sh 'docker-compose push'
+                    }
+                }
+            }
+        }
+
+        stage('Deploy with Docker Compose Up') {
+            steps {
+                script {
+                    // Start the containers using docker-compose
+                    dir('nvit-gameapp') {
+                        sh 'docker-compose up -d' // The -d flag runs containers in detached mode
+                    }
+                }
             }
         }
     }
 }
+
