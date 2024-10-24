@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = 'engrgyang/my-static-ecommerce-site'
-        DOCKER_HUB_CREDENTIALS = 'your-docker-hub-credentials-id'
+        DOCKER_HUB_CREDENTIALS = 'dockerhub-repo'
         GITHUB_CREDENTIALS = 'your-github-credentials-id'
     }
 
