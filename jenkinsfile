@@ -18,17 +18,19 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
         stage('Push Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: '7b0696d7-7e7c-4e4b-853c-af792330b47f', usernameVariable: 'DOCKERHUB_CREDENTIALS_USR', passwordVariable: 'DOCKERHUB_CREDENTIALS_PSW')]) {
+                withCredentials([usernamePassword(credentialsId: '7b0696d7-7e7c-4e4b-853c-af792330b47f', 
+                                                 usernameVariable: 'DOCKERHUB_CREDENTIALS_USR', 
+                                                 passwordVariable: 'DOCKERHUB_CREDENTIALS_PSW')]) {
                     script {
-                        sh 'echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin'
-                        sh 'docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKERHUB_CREDENTIALS_USR}/${IMAGE_NAME}:${IMAGE_TAG}'
-                        sh 'docker push ${DOCKERHUB_CREDENTIALS_USR}/${IMAGE_NAME}:${IMAGE_TAG}'
+                        sh "echo \"\$DOCKERHUB_CREDENTIALS_PSW\" | docker login -u \"\$DOCKERHUB_CREDENTIALS_USR\" --password-stdin"
+                        sh "docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKERHUB_CREDENTIALS_USR}/${IMAGE_NAME}:${IMAGE_TAG}"
+                        sh "docker push ${DOCKERHUB_CREDENTIALS_USR}/${IMAGE_NAME}:${IMAGE_TAG}"
                     }
                 }
             }
@@ -43,7 +45,7 @@ pipeline {
                     '''
                     // Run a new container with the built image
                     sh '''
-                        docker run -d --name ${IMAGE_NAME} -p 90:90 ${DOCKERHUB_CREDENTIALS_USR} ${IMAGE_NAME}:${IMAGE_TAG}
+                        docker run -d --name ${IMAGE_NAME} -p 90:90 ${DOCKERHUB_CREDENTIALS_USR}/${IMAGE_NAME}:${IMAGE_TAG}
                     '''
                 }
             }
@@ -52,8 +54,8 @@ pipeline {
     post {
         always {
             script {
-                sh 'docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true'
-                sh 'docker logout'
+                sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+                sh "docker logout"
             }
         }
     }
