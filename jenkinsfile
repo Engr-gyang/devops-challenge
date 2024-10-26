@@ -1,44 +1,60 @@
 pipeline {
-    agent any
-
-    environment {
-        DOCKER_IMAGE = 'engrgyang/my-static-ecommerce-site'
-        DOCKER_HUB_CREDENTIALS = 'dockerhub-repo'
-        GITHUB_CREDENTIALS = 'https://github.com/Engr-gyang/devops-challenge.git'
+    agent {
+        docker {
+            image 'docker:stable-dind'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
     }
-
+    environment {
+        IMAGE_NAME = 'my-static-website'
+        IMAGE_TAG = 'latest'
+    }
     stages {
-        stage('Git Checkout') {
+        stage('Checkout') {
             steps {
-                dir('devops-challenge') {
-                    git url: REPO_URL, branch: 'main'
+                checkout scm
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
                 }
             }
         }
-
-        stage('Build and Push with Docker Compose') {
+        stage('Push Docker Image') {
             steps {
-                script {
-                    // Change to the directory with the docker-compose file
-                    dir('devops-challenge') {
-                        // Build and push the Docker image using docker-compose
-                        sh 'docker-compose build'
-                        sh 'docker-compose push'
+                withCredentials([usernamePassword(credentialsId: '', usernameVariable: 'DOCKERHUB_CREDENTIALS_USR', passwordVariable: 'DOCKERHUB_CREDENTIALS_PSW')]) {
+                    script {
+                        sh 'echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin'
+                        sh 'docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKERHUB_CREDENTIALS_USR}/${IMAGE_NAME}:${IMAGE_TAG}'
+                        sh 'docker push ${DOCKERHUB_CREDENTIALS_USR}/${IMAGE_NAME}:${IMAGE_TAG}'
                     }
                 }
             }
         }
-
-        stage('Deploy with Docker Compose Up') {
+        stage('Deploy Application') {
             steps {
                 script {
-                    // Start the containers using docker-compose
-                    dir('nvit-gameapp') {
-                        sh 'docker-compose up -d' // The -d flag runs containers in detached mode
-                    }
+                    // Stop and remove any existing container
+                    sh '''
+                        docker stop ${IMAGE_NAME} || true
+                        docker rm ${IMAGE_NAME} || true
+                    '''
+                    // Run a new container with the built image
+                    sh '''
+                        docker run -d --name ${IMAGE_NAME} -p 90:90 ${DOCKERHUB_CREDENTIALS_USR} ${IMAGE_NAME}:${IMAGE_TAG}
+                    '''
                 }
+            }
+        }
+    }
+    post {
+        always {
+            script {
+                sh 'docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true'
+                sh 'docker logout'
             }
         }
     }
 }
-
